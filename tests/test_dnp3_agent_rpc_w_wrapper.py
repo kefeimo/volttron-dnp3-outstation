@@ -50,87 +50,90 @@ def test_testing_file_path():
     logging_logger.info(f"test_testing_file_path {dnp3_agent_config_path}")
 
 
+# from volttrontesting.fixtures.volttron_platform_fixtures import volttron_instance
+# @pytest.fixture(scope="module")
+# def volttron_platform_wrapper_new(volttron_instance):
+#
+#     volttron_home = volttron_instance.volttron_home
+#     print(f"==== 1st, is_volttron_running at volttron_home={volttron_home}:  {is_volttron_running(volttron_home)}")
+#     # start the platform, check status with flexible retry
+#     # process = subprocess.Popen(["volttron"])  # use Popen, no-blocking
+#
+#     retry_call(f=is_volttron_running, f_kwargs=dict(volttron_home=volttron_home), max_retries=100, delay_s=2,
+#                pass_criteria=True)
+#     print(f"==== 2nd, is_volttron_running at volttron_home={volttron_home}:  {is_volttron_running(volttron_home)}")
+#     if not is_volttron_running(volttron_home):
+#         raise Exception("VOLTTRON platform failed to start with volttron_home: {volttron_home}.")
+#
+#     yield volttron_home
+#     # TODO: add clean up options to remove volttron_home
+#     # subprocess.Popen(["vctl", "shutdown", "--platform"])
+#     volttron_instance
+#     retry_call(f=is_volttron_running, f_kwargs=dict(volttron_home=volttron_home), max_retries=100, delay_s=1,
+#                wait_before_call_s=2,
+#                pass_criteria=False)
+#     print(f"==== 3rd, is_volttron_running at volttron_home={volttron_home}:  {is_volttron_running(volttron_home)}")
+
+
+from utils.platform_fixture_new import volttron_instance_new
+
+def test_volttron_instance_new_fixture(volttron_instance_new):
+    print(volttron_instance_new)
+    logging_logger.info(f"=========== volttron_instance_new.volttron_home: {volttron_instance_new.volttron_home}")
+    logging_logger.info(f"=========== volttron_instance_new.skip_cleanup: {volttron_instance_new.skip_cleanup}")
+    logging_logger.info(f"=========== volttron_instance_new.vip_address: {volttron_instance_new.vip_address}")
+
 @pytest.fixture(scope="module")
-def volttron_platform_wrapper_new(volttron_home):
-    print(f"==== 1st, is_volttron_running at volttron_home={volttron_home}:  {is_volttron_running(volttron_home)}")
-    # start the platform, check status with flexible retry
-    process = subprocess.Popen(["volttron"])  # use Popen, no-blocking
-    retry_call(f=is_volttron_running, f_kwargs=dict(volttron_home=volttron_home), max_retries=100, delay_s=2,
-               pass_criteria=True)
-    print(f"==== 2nd, is_volttron_running at volttron_home={volttron_home}:  {is_volttron_running(volttron_home)}")
-    if not is_volttron_running(volttron_home):
-        raise Exception("VOLTTRON platform failed to start with volttron_home: {volttron_home}.")
-
-    yield volttron_home
-    # TODO: add clean up options to remove volttron_home
-    subprocess.Popen(["vctl", "shutdown", "--platform"])
-    retry_call(f=is_volttron_running, f_kwargs=dict(volttron_home=volttron_home), max_retries=100, delay_s=1,
-               wait_before_call_s=2,
-               pass_criteria=False)
-    print(f"==== 3rd, is_volttron_running at volttron_home={volttron_home}:  {is_volttron_running(volttron_home)}")
-
-
-def test_volttron_platform_wrapper_new_fixture(volttron_platform_wrapper_new):
-    print(volttron_platform_wrapper_new)
-
-
-@pytest.fixture(scope="module")
-def vip_agent(volttron_platform_wrapper_new):
+def vip_agent(volttron_instance_new):
     # build a vip agent
-    a = build_agent()
+    a = volttron_instance_new.build_agent()
     print(a)
     return a
 
 
 def test_vip_agent_fixture(vip_agent):
     print(vip_agent)
+    logging_logger.info(f"=========== vip_agent: {vip_agent}")
+    logging_logger.info(f"=========== vip_agent.core.identity: {vip_agent.core.identity}")
+    logging_logger.info(f"=========== vip_agent.vip.peerlist().get(): {vip_agent.vip.peerlist().get()}")
 
 
 @pytest.fixture(scope="module")
-def dnp3_outstation_agent(volttron_platform_wrapper_new) -> str:
+def dnp3_outstation_agent(volttron_instance_new) -> dict:
     """
     Install and start a dnp3-outstation-agent, return its vip-identity
     """
-    # TODO: use yield and add clean-up
     # install a dnp3-outstation-agent
     parent_path = os.getcwd()
     dnp3_outstation_package_path = pathlib.Path(parent_path).parent
     dnp3_agent_config_path = os.path.join(parent_path, "dnp3-outstation-config.json")
+    config = {
+        "outstation_ip": "0.0.0.0",
+        "master_id": 2,
+        "outstation_id": 1,
+        "port":  20000
+    }
     agent_vip_id = dnp3_vip_identity
-    # Note: for volttron 10.0.3a7, `vctl install <package-name>` will pip install from Pypi,
-    # which does not point to the current code source.
-    # Use `vctl install <package-path>` instead
-    cmd = f"vctl install {dnp3_outstation_package_path} --agent-config {dnp3_agent_config_path} " + \
-          f"--vip-identity {agent_vip_id}"
-    # print(f"========== 1st test_dnp3_agent_install vctl --json status", vctl_json_status())
-    logging_logger.info(f"===== 1st test_dnp3_agent_install vctl --json --status {vctl_json_status()}")
-
-    res = subprocess.Popen(cmd, shell=True,
-                           stdout=subprocess.PIPE)  # Need to use subprocess.run to wait for the process finish
-    # print(res.stdout.decode())
-
-    # print(f"========== 1st(b) test_dnp3_agent_install vctl --json status", vctl_json_status())
-    logging_logger.info(f"===== 1st(b) test_dnp3_agent_install vctl --json --status {vctl_json_status()}")
-    # check if installed successfully
-
-    res = retry_call(f=is_agent_installed, f_kwargs=dict(agent_vip_identity=agent_vip_id), max_retries=100, delay_s=2,
-                     wait_before_call_s=2, pass_criteria=True)
-    print(f"========== 1st(b) retry_call", res)
-
-    # starting agent
-    uuid = get_agent_uuid(agent_vip_id)
-    start_agent(uuid)
-    # check if starting successfully
-    print(f"========== 3rd test_dnp3_agent_install vctl --json status", vctl_json_status())
-    res = retry_call(f=is_agent_running, f_kwargs=dict(agent_vip_identity=agent_vip_id), max_retries=100, delay_s=2,
-                     wait_before_call_s=2, pass_criteria=True)
-    print(f"========== 3rd retry_call", res)
-    logging_logger.info(f"===== 3rd test_dnp3_agent_install vctl --json --status {vctl_json_status()}")
-    return agent_vip_id
+    uuid = volttron_instance_new.install_agent(agent_dir=dnp3_outstation_package_path,
+                            config_file=config,
+                            start=False,
+                            vip_identity=agent_vip_id)
+    # start agent with retry
+    pid = retry_call(volttron_instance_new.start_agent, f_kwargs=dict(agent_uuid=uuid), max_retries=5, delay_s=2,
+                     wait_before_call_s=2)
+    # check if running with retry
+    retry_call(volttron_instance_new.is_agent_running, f_kwargs=dict(agent_uuid=uuid), max_retries=5, delay_s=2,
+                     wait_before_call_s=2)
+    return {"uuid": uuid, "pid": pid}
 
 
-def test_install_dnp3_outstation_agent_fixture(dnp3_outstation_agent):
-    print(dnp3_outstation_agent)
+def test_install_dnp3_outstation_agent_fixture(dnp3_outstation_agent, vip_agent, volttron_instance_new):
+    puid = dnp3_outstation_agent
+    print(puid)
+    logging_logger.info(f"=========== dnp3_outstation_agent ids: {dnp3_outstation_agent}")
+    logging_logger.info(f"=========== vip_agent.vip.peerlist().get(): {vip_agent.vip.peerlist().get()}")
+    logging_logger.info(f"=========== volttron_instance_new.is_agent_running(puid): "
+                        f"{volttron_instance_new.is_agent_running(dnp3_outstation_agent['uuid'])}")
 
 
 def test_dummy(vip_agent, dnp3_outstation_agent):

@@ -169,8 +169,7 @@ def retry_call(f: callable, f_args: list = None, f_kwargs: dict = None,
         try:
             result = f(*f_args, **f_kwargs)
             if not _is_check_exception_only and result != pass_criteria:
-                raise RetryCallExeption(f"result=={f.__name__}(args=*list({f_args}), kwargs=**{f_kwargs}) != "
-                                        f"pass_criteria=={pass_criteria}. ")
+                raise RetryCallExeption(f"result=={result} != pass_criteria=={pass_criteria}. ")
             return result
 
         except Exception as e:
